@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "610139369160",
+    "project_id": "noticus-12d48",
+    "storage_bucket": "noticus-12d48.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:610139369160:android:edaa2d3b4e3955b411fffd",
+        "android_client_info": {
+          "package_name": "com.example.noticus"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyArZVLDnQE-f-H9pcDm83JORWpZpFBCOXY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
