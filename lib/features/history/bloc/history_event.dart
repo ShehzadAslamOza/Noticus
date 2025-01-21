@@ -24,3 +24,42 @@ class AddNotificationEvent extends HistoryEvent {
   @override
   List<Object?> get props => [notification];
 }
+
+class StartSearchEvent extends HistoryEvent {
+  final List<HistoryEntity> history;
+  StartSearchEvent(this.history);
+
+  @override
+  List<Object?> get props => [history];
+}
+
+class StopSearchEvent extends HistoryEvent {}
+
+class SearchQueryChangedEvent extends HistoryEvent {
+  final String query;
+  final List<HistoryEntity> history;
+
+  SearchQueryChangedEvent(this.query, this.history);
+
+  @override
+  List<Object?> get props => [query, history];
+}
+
+class ToggleDashboardEvent extends HistoryEvent {}
+
+class ClearAllNotificationsEvent extends HistoryEvent {
+  final String userId;
+  ClearAllNotificationsEvent(this.userId);
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+class DeleteNotificationEvent extends HistoryEvent {
+  final String notificationId;
+
+  DeleteNotificationEvent(this.notificationId);
+
+  @override
+  List<Object?> get props => [notificationId];
+}

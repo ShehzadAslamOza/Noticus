@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
@@ -20,28 +19,35 @@ part 'history_state.dart';
 
 class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
   final FetchHistoryUseCase fetchHistory;
-  List<HistoryEntity> history_list = [];
+  List<HistoryEntity> historyList = [];
 
   HistoryBloc({required this.fetchHistory}) : super(HistoryInitial()) {
     // Listen to global notification events
     NotificationEventBus().stream.listen((notification) {
-      print("Inside add notification event");
       add(AddNotificationEvent(notification));
     });
+
     on<FetchHistoryEvent>((event, emit) async {
       emit(HistoryLoading());
       try {
         final history = await fetchHistory(event.userId);
-        history_list = history;
-        emit(HistoryLoaded(history));
+        historyList = history;
+        emit(HistoryLoaded(
+          history: history,
+          filteredHistory: history,
+        ));
       } catch (e) {
         emit(HistoryError("Failed to fetch history"));
       }
     });
 
     on<FetchLocalHistoryEvent>((event, emit) {
-      emit(HistoryLoaded(history_list));
+      emit(HistoryLoaded(
+        history: historyList,
+        filteredHistory: historyList,
+      ));
     });
+
     on<AddNotificationEvent>((event, emit) async {
       Uint8List? appIcon;
       String appName = '';
@@ -54,8 +60,7 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
         appIcon = null;
       }
 
-      // Create a new list with the new notification added
-      final updatedHistoryList = List<HistoryEntity>.from(history_list)
+      final updatedHistoryList = List<HistoryEntity>.from(historyList)
         ..add(
           HistoryEntity(
             id: event.notification.id,
@@ -68,8 +73,99 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
           ),
         );
 
-      history_list = updatedHistoryList;
-      emit(HistoryLoaded(updatedHistoryList));
+      historyList = updatedHistoryList;
+      emit(HistoryLoaded(
+        history: updatedHistoryList,
+        filteredHistory: updatedHistoryList,
+      ));
     });
+
+    on<StartSearchEvent>((event, emit) {
+      if (state is HistoryLoaded) {
+        final currentState = state as HistoryLoaded;
+        emit(currentState.copyWith(
+          isSearching: true,
+          searchQuery: '',
+          filteredHistory: event.history,
+        ));
+      }
+    });
+
+    on<StopSearchEvent>((event, emit) {
+      if (state is HistoryLoaded) {
+        final currentState = state as HistoryLoaded;
+        emit(currentState.copyWith(
+          isSearching: false,
+          searchQuery: '',
+        ));
+      }
+    });
+
+    on<SearchQueryChangedEvent>((event, emit) {
+      if (state is HistoryLoaded) {
+        final currentState = state as HistoryLoaded;
+        final filtered = event.history.where((notification) {
+          final title = notification.title.toLowerCase();
+          final subtitle = (notification.subtitle ?? '').toLowerCase();
+          final appName = notification.appName.toLowerCase();
+          return title.contains(event.query.toLowerCase()) ||
+              subtitle.contains(event.query.toLowerCase()) ||
+              appName.contains(event.query.toLowerCase());
+        }).toList();
+
+        emit(currentState.copyWith(
+          searchQuery: event.query,
+          filteredHistory: filtered,
+        ));
+      }
+    });
+
+    on<ToggleDashboardEvent>((event, emit) {
+      if (state is HistoryLoaded) {
+        final currentState = state as HistoryLoaded;
+        emit(currentState.copyWith(
+          showDashboard: !currentState.showDashboard,
+        ));
+      }
+    });
+
+    on<ClearAllNotificationsEvent>((event, emit) async {
+      try {
+        // Clear notifications from Firebase (mocking for now)
+        await clearNotificationsFromFirebase(event.userId);
+        historyList.clear();
+        emit(HistoryLoaded(
+          history: [],
+          filteredHistory: [],
+        ));
+      } catch (e) {
+        emit(HistoryError("Failed to clear notifications"));
+      }
+    });
+
+    on<DeleteNotificationEvent>((event, emit) async {
+      try {
+        // Delete notification from Firebase (mocking for now)
+        await deleteNotificationFromFirebase(event.notificationId);
+        final updatedHistoryList = historyList
+            .where((notification) => notification.id != event.notificationId)
+            .toList();
+        historyList = updatedHistoryList;
+        emit(HistoryLoaded(
+          history: updatedHistoryList,
+          filteredHistory: updatedHistoryList,
+        ));
+      } catch (e) {
+        emit(HistoryError("Failed to delete notification"));
+      }
+    });
+  }
+
+  Future<void> clearNotificationsFromFirebase(String userId) async {
+    // Implement Firebase clearing logic
+  }
+
+  Future<void> deleteNotificationFromFirebase(String notificationId) async {
+    // Implement Firebase delete logic
   }
 }

@@ -95,7 +95,7 @@ class LoginPage extends StatelessWidget {
                     fontSize: 20.0,
                   ),
                 ),
-                Icon(Icons.login, color: Colors.black),
+                // Icon(Icons.login, color: Colors.black),
               ],
             ),
           ),

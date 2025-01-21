@@ -1,151 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:noticus/features/rules/bloc/rules_bloc.dart';
 import 'package:noticus/features/rules/presentation/select_app_screen.dart';
 
-class RulesPage extends StatefulWidget {
-  @override
-  _RulesPageState createState() => _RulesPageState();
-}
-
-class _RulesPageState extends State<RulesPage> {
+class RulesPage extends StatelessWidget {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  String _searchQuery = "";
-  bool _isSearching = false;
-  String _userId = "";
-
-  @override
-  void initState() {
-    super.initState();
-    getUserId();
-  }
-
-  void getUserId() {
-    final user = _auth.currentUser;
-    if (user != null) {
-      setState(() {
-        _userId = user.uid;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: _isSearching ? buildSearchAppBar() : buildDefaultAppBar(),
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Icon(Icons.rule, color: Colors.white, size: 50.0),
-            ),
-            SizedBox(height: 20.0),
-            Center(
-              child: Text(
-                "Notifications Rules",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24.0,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            SizedBox(height: 20.0),
-            Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 30.0),
-                child: Text(
-                  "When you get a notification, if it matches any of the following rules it will perform the chosen action.",
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 16.0,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            SizedBox(height: 20.0),
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _firestore
-                    .collection('rules')
-                    .where('userId', isEqualTo: _userId) // Filter by userId
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    );
-                  }
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(
-                      child: Text(
-                        "No rules found.",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    );
-                  }
-
-                  final rules = snapshot.data!.docs.where((rule) {
-                    // Filter rules by search query
-                    final description =
-                        rule['description']?.toLowerCase() ?? '';
-                    return description.contains(_searchQuery);
-                  }).toList();
-
-                  if (rules.isEmpty) {
-                    return Center(
-                      child: Text(
-                        "No matching rules found.",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    itemCount: rules.length,
-                    itemBuilder: (context, index) {
-                      final rule = rules[index];
-                      return buildRuleCard(
-                        ruleId: rule.id,
-                        title: rule['description'],
-                        isActive: rule['isActive'],
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
+    return BlocProvider(
+      create: (_) => RulesBloc(FirebaseAuth.instance)..add(LoadUserId()),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(kToolbarHeight),
+          child: BlocBuilder<RulesBloc, RulesState>(
+            builder: (context, state) {
+              if (state is RulesLoaded) {
+                return state.searchMode
+                    ? buildSearchAppBar(context)
+                    : buildDefaultAppBar(context);
+              }
+              return AppBar(); // Placeholder for initial state
+            },
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.yellow.shade300,
-        icon: Icon(Icons.add, color: Colors.black),
-        label: Text(
-          "Create rule",
-          style: TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 15.0),
+        body: BlocBuilder<RulesBloc, RulesState>(
+          builder: (context, state) {
+            if (state is RulesLoaded) {
+              return buildBody(
+                context,
+                state.userId,
+                state.searchMode,
+                state.searchQuery,
+              );
+            }
+            return Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ); // Placeholder for loading/initial state
+          },
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(40),
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: Colors.yellow.shade300,
+          icon: Icon(Icons.add, color: Colors.black),
+          label: Text(
+            "Create rule",
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 15.0,
+            ),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(40),
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => SelectAppScreen()),
+            );
+          },
         ),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => SelectAppScreen()),
-          );
-        },
       ),
     );
   }
 
-  AppBar buildDefaultAppBar() {
+  AppBar buildDefaultAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.black,
       title: Text(
@@ -156,32 +78,25 @@ class _RulesPageState extends State<RulesPage> {
         IconButton(
           icon: Icon(Icons.search, color: Colors.white),
           onPressed: () {
-            setState(() {
-              _isSearching = true;
-            });
+            context.read<RulesBloc>().add(ToggleSearchMode());
           },
         ),
       ],
     );
   }
 
-  AppBar buildSearchAppBar() {
+  AppBar buildSearchAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.black,
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () {
-          setState(() {
-            _isSearching = false;
-            _searchQuery = "";
-          });
+          context.read<RulesBloc>().add(ExitSearchMode());
         },
       ),
       title: TextField(
         onChanged: (value) {
-          setState(() {
-            _searchQuery = value.toLowerCase();
-          });
+          context.read<RulesBloc>().add(UpdateSearchQuery(value));
         },
         style: TextStyle(color: Colors.white),
         cursorColor: Colors.white,
@@ -194,14 +109,110 @@ class _RulesPageState extends State<RulesPage> {
     );
   }
 
+  Widget buildBody(
+    BuildContext context,
+    String userId,
+    bool searchMode,
+    String searchQuery,
+  ) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Icon(Icons.rule, color: Colors.white, size: 50.0),
+          ),
+          SizedBox(height: 20.0),
+          Center(
+            child: Text(
+              searchMode ? "Search Results" : "Notifications Rules",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          SizedBox(height: 20.0),
+          Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 30.0),
+              child: Text(
+                "When you get a notification, if it matches any of the following rules it will perform the chosen action.",
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 16.0,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          SizedBox(height: 20.0),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('rules')
+                  .where('userId', isEqualTo: userId)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  );
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      "No rules found.",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  );
+                }
+
+                final rules = snapshot.data!.docs.where((rule) {
+                  final description = rule['description']?.toLowerCase() ?? '';
+                  return searchMode ? description.contains(searchQuery) : true;
+                }).toList();
+
+                if (rules.isEmpty) {
+                  return Center(
+                    child: Text(
+                      "No matching rules found.",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: rules.length,
+                  itemBuilder: (context, index) {
+                    final rule = rules[index];
+                    return buildRuleCard(
+                      context: context,
+                      ruleId: rule.id,
+                      title: rule['description'],
+                      isActive: rule['isActive'],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget buildRuleCard({
+    required BuildContext context,
     required String ruleId,
     required String title,
     required bool isActive,
   }) {
     return GestureDetector(
       onLongPress: () {
-        showDeleteConfirmationDialog(ruleId);
+        showDeleteConfirmationDialog(context, ruleId);
       },
       child: Container(
         margin: EdgeInsets.only(bottom: 16.0),
@@ -240,7 +251,7 @@ class _RulesPageState extends State<RulesPage> {
                       Switch(
                         value: isActive,
                         onChanged: (bool value) {
-                          updateRuleStatus(ruleId, value);
+                          updateRuleStatus(context, ruleId, value);
                         },
                         activeColor: Colors.red.shade300,
                         activeTrackColor: Colors.black,
@@ -277,7 +288,7 @@ class _RulesPageState extends State<RulesPage> {
     );
   }
 
-  void updateRuleStatus(String ruleId, bool isActive) {
+  void updateRuleStatus(BuildContext context, String ruleId, bool isActive) {
     _firestore.collection('rules').doc(ruleId).update({
       'isActive': isActive,
     }).catchError((error) {
@@ -290,7 +301,7 @@ class _RulesPageState extends State<RulesPage> {
     });
   }
 
-  void showDeleteConfirmationDialog(String ruleId) {
+  void showDeleteConfirmationDialog(BuildContext context, String ruleId) {
     showDialog(
       context: context,
       builder: (context) {
@@ -307,7 +318,7 @@ class _RulesPageState extends State<RulesPage> {
             TextButton(
               child: Text("Delete", style: TextStyle(color: Colors.red)),
               onPressed: () {
-                deleteRule(ruleId);
+                deleteRule(context, ruleId);
               },
             ),
           ],
@@ -316,8 +327,8 @@ class _RulesPageState extends State<RulesPage> {
     );
   }
 
-  void deleteRule(String ruleId) {
-    Navigator.pop(context); // Close the dialog
+  void deleteRule(BuildContext context, String ruleId) {
+    Navigator.pop(context);
     _firestore.collection('rules').doc(ruleId).delete().catchError((error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

@@ -30,31 +30,6 @@ void main() {
       await screenMatchesGolden(tester, 'login_page_initial');
     });
 
-    // testGoldens('LoginPage with loading state', (WidgetTester tester) async {
-    //   await loadAppFonts();
-
-    //   final widget = BlocProvider<AuthBloc>(
-    //     create: (_) {
-    //       final bloc = AuthBloc(
-    //         loginUseCase: MockLoginUseCase(),
-    //         signupUseCase: MockSignupUseCase(),
-    //       );
-    //       bloc.emit(AuthLoading());
-    //       return bloc;
-    //     },
-    //     child: MaterialApp(
-    //       home: LoginPage(),
-    //     ),
-    //   );
-
-    //   await tester.pumpWidgetBuilder(widget);
-
-    //   // Render one frame without waiting for animations
-    //   await tester.pump();
-
-    //   await screenMatchesGolden(tester, 'login_page_loading');
-    // });
-
     testGoldens('LoginPage with error state', (WidgetTester tester) async {
       await loadAppFonts();
 
@@ -93,31 +68,6 @@ void main() {
       await tester.pumpWidgetBuilder(widget);
       await screenMatchesGolden(tester, 'signup_page_initial');
     });
-
-    // testGoldens('SignupPage with loading state', (WidgetTester tester) async {
-    //   await loadAppFonts();
-
-    //   final widget = BlocProvider<AuthBloc>(
-    //     create: (_) {
-    //       final bloc = AuthBloc(
-    //         loginUseCase: MockLoginUseCase(),
-    //         signupUseCase: MockSignupUseCase(),
-    //       );
-    //       bloc.emit(AuthLoading());
-    //       return bloc;
-    //     },
-    //     child: MaterialApp(
-    //       home: SignupPage(),
-    //     ),
-    //   );
-
-    //   await tester.pumpWidgetBuilder(widget);
-
-    //   // Render one frame without waiting for animations
-    //   await tester.pump();
-
-    //   await screenMatchesGolden(tester, 'signup_page_loading');
-    // });
 
     testGoldens('SignupPage with error state', (WidgetTester tester) async {
       await loadAppFonts();

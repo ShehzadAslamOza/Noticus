@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:installed_apps/installed_apps.dart';
 import 'package:noticus/core/utils/StreamController.dart';
 
 // Core
@@ -24,6 +25,7 @@ import 'package:noticus/features/history/bloc/history_bloc.dart';
 import 'package:noticus/features/history/domain/usecases/fetch_history_usecase.dart';
 import 'package:noticus/features/history/data/repositories/history_repository_impl.dart';
 import 'package:noticus/features/history/data/sources/history_remote_data_source.dart';
+import 'package:noticus/features/rules/select_app_bloc/bloc/select_app_bloc.dart';
 import 'package:torch_controller/torch_controller.dart';
 
 void main() async {
@@ -99,7 +101,12 @@ class MyApp extends StatelessWidget {
           ),
         ),
 
-        // RulesBloc
+        // SelectAppBloc
+        BlocProvider<SelectAppBloc>(
+          create: (_) => SelectAppBloc(
+            InstalledApps.getInstalledApps(true, true),
+          ),
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
